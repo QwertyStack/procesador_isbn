@@ -10,7 +10,7 @@ import json
 
 def lectura_fichero():
     '''
-    Procesamiento de cada uno de los ficheros *.txt que contienen los libros clasificados por categorías
+    Procesamiento de cada uno de los ficheros *.txt que contienen los libros clasificados por categorías.
     '''
     Ficheros = listdir(config.RUTA_BASE+"datos/")
     for fichero in Ficheros:
@@ -29,6 +29,9 @@ def lectura_fichero():
 
 
 def peticion(isbn, EL_DICCIONARIO, fichero):
+    '''
+    Petición a la API de Google Books para obtener información sobre el ISBN.
+    '''
     logging.info("Peticion a la API con el isbn " + isbn)
     url = "https://www.googleapis.com/books/v1/volumes?q=isbn:"+isbn
     r = requests.get(url)
@@ -77,21 +80,24 @@ def peticion(isbn, EL_DICCIONARIO, fichero):
 
 
 def to_csv():
-	Diccionarios = listdir(config.RUTA_BASE+"out/")
-	for dicc in Diccionarios:
-		logging.info("Procesando datos del diccionario: "+ dicc)
-		datos = json.load(open(config.RUTA_BASE+"out/"+dicc))
-		with open(config.RUTA_BASE+"csv/"+dicc.split(".")[0]+".csv", 'w') as outfile:
-			listWriter = csv.DictWriter(
-		    		outfile,
-		    		fieldnames=datos[list(datos.keys())[0]].keys(),
-		    		delimiter=';',
-		    		quotechar='|',
-		    		quoting=csv.QUOTE_MINIMAL
-		    	)
-			listWriter.writeheader()
-			for libro in datos:
-				listWriter.writerows([datos[libro]])
+    '''
+    Conversión de los datos del diccionario al CSV.
+    '''
+    Diccionarios = listdir(config.RUTA_BASE+"out/")
+    for dicc in Diccionarios:
+        logging.info("Procesando datos del diccionario: "+ dicc)
+        datos = json.load(open(config.RUTA_BASE+"out/"+dicc))
+        with open(config.RUTA_BASE+"csv/"+dicc.split(".")[0]+".csv", 'w') as outfile:
+            listWriter = csv.DictWriter(
+            		outfile,
+            		fieldnames=datos[list(datos.keys())[0]].keys(),
+            		delimiter=';',
+            		quotechar='|',
+            		quoting=csv.QUOTE_MINIMAL
+            )
+            listWriter.writeheader()
+            for libro in datos:
+            	listWriter.writerows([datos[libro]])
 
 
 

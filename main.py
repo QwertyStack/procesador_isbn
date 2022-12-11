@@ -21,21 +21,23 @@ def lectura_fichero():
             # Procesamiento de cada isbn
             for line in Lines:
                 line = line.strip()
-                peticion(line, EL_DICCIONARIO, fichero)
+                to_dict(line, EL_DICCIONARIO, fichero)
         # Volcar los resultados por categoría en un fichero out/dict_<categoria>.json
         with open(config.RUTA_BASE+"out/dict_"+ fichero.split(".")[0]+".json", "w") as file:
             file.write(json.dumps(EL_DICCIONARIO, ensure_ascii=False))
 
 
+def peticion(url, isbn):
+    r = requests.get(url+isbn)
+    return r.json()
 
-def peticion(isbn, EL_DICCIONARIO, fichero):
+
+def to_dict(isbn, EL_DICCIONARIO, fichero):
     '''
     Petición a la API de Google Books para obtener información sobre el ISBN.
     '''
-    logging.info("Peticion a la API con el isbn " + isbn)
-    url = "https://www.googleapis.com/books/v1/volumes?q=isbn:"+isbn
-    r = requests.get(url)
-    r_json = r.json()
+    logging.info("Peticion a la API Google Books con el isbn " + isbn)
+    r_json = peticion("https://www.googleapis.com/books/v1/volumes?q=isbn:", isbn)
     
     # Control si existe el ISBN en Google Books
     if r_json["totalItems"] > 0:
@@ -61,8 +63,26 @@ def peticion(isbn, EL_DICCIONARIO, fichero):
             else:
                 logging.info("Coincidencia con ISBN:"+ isbn)
     else:
-        if isbn in EL_DICCIONARIO.keys():
+        # No se han obtenido resultados
+        logging.warning(f"No hay registros en Google Books para el ISBN: {isbn} del fichero {fichero}")
+        r_json = peticion("https://api.itbook.store/1.0/books/", isbn)
+
+        if r_json['error'] != '[books] Not found':
+            logging.info(f"Hay registros en IT Bookstore API para el ISBN {isbn}")
+            EL_DICCIONARIO[isbn]={
+					"ISBN": isbn,
+                    "n_apariciones":1,
+                    "titulo": r_json["title"] if "title" in r_json.keys() else "",
+                    "subtitulo": r_json["subtitle"] if "subtitle" in r_json.keys() else "",
+                    "fecha_publicacion": r_json["year"] if "year" in r_json.keys() else "",
+                    "autor/es":  r_json["authors"] if "authors" in  r_json.keys() else "",
+                    "idioma": "",
+                    "imagen": r_json["image"] if "image" in r_json.keys() else "",
+                    "descripcion": r_json["desc"] if "desc" in r_json.keys() else ""
+                }
+        elif isbn in EL_DICCIONARIO.keys():
             EL_DICCIONARIO[isbn]["n_apariciones"]+=1
+            logging.warning(f"No hay registros en IT Bookstore API para el ISBN: {isbn} del fichero {fichero}")
         else:
             EL_DICCIONARIO[isbn]={
                 "ISBN": isbn, 
@@ -75,7 +95,8 @@ def peticion(isbn, EL_DICCIONARIO, fichero):
                 "imagen": "",
                 "descripcion": ""
             }
-        logging.warning(f"No hay registros en Google Books para el ISBN: {isbn} del fichero {fichero}")
+            logging.warning(f"No hay registros en IT Bookstore API para el ISBN: {isbn} del fichero {fichero}")
+        
 
 
 

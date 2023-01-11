@@ -27,7 +27,9 @@ def lectura_fichero():
             file.write(json.dumps(EL_DICCIONARIO, ensure_ascii=False))
 
 
-def peticion(url, isbn):
+def peticion(url, isbn=None):
+    if "openlibrary" in url:
+        return requests.get(url+isbn+".json")
     r = requests.get(url+isbn)
     return r.json()
 
@@ -65,6 +67,7 @@ def to_dict(isbn, EL_DICCIONARIO, fichero):
     else:
         # No se han obtenido resultados
         logging.warning(f"No hay registros en Google Books para el ISBN: {isbn} del fichero {fichero}")
+        logging.info("Peticion a IT Bookstore API con el isbn " + isbn)
         r_json = peticion("https://api.itbook.store/1.0/books/", isbn)
 
         if r_json['error'] != '[books] Not found':
@@ -80,9 +83,32 @@ def to_dict(isbn, EL_DICCIONARIO, fichero):
                     "imagen": r_json["image"] if "image" in r_json.keys() else "",
                     "descripcion": r_json["desc"] if "desc" in r_json.keys() else ""
                 }
-        elif isbn in EL_DICCIONARIO.keys():
-            EL_DICCIONARIO[isbn]["n_apariciones"]+=1
+        
+        else:
             logging.warning(f"No hay registros en IT Bookstore API para el ISBN: {isbn} del fichero {fichero}")
+            logging.info("Peticion a OpenLibrary con el isbn " + isbn)
+            r = peticion("https://openlibrary.org/isbn/", isbn)
+
+            if r.status_code == 200:
+                logging.info(f"Hay registros en OpenLibrary para el ISBN {isbn}")
+                r_json = json.loads(r.text)
+                EL_DICCIONARIO[isbn]={
+					"ISBN": isbn,
+                    "n_apariciones":1,
+                    "titulo": r_json["title"] if "title" in r_json.keys() else "",
+                    "subtitulo": r_json["subtitle"] if "subtitle" in r_json.keys() else "",
+                    "fecha_publicacion": r_json["publish_date"] if "publish_date" in r_json.keys() else "",
+                    "autor/es":  r_json["by_statement"] if "by_statement" in  r_json.keys() else "",
+                    "idioma": r_json["languages"][0]['key'].split("/")[2] if "languages" in  r_json.keys() else "",
+                    "imagen": "",
+                    "descripcion": ""
+                }
+            else:
+                logging.warning(f"No hay registros en OpenLibrary para el ISBN: {isbn} del fichero {fichero}")
+
+            
+        if isbn in EL_DICCIONARIO.keys():
+            EL_DICCIONARIO[isbn]["n_apariciones"]+=1
         else:
             EL_DICCIONARIO[isbn]={
                 "ISBN": isbn, 
@@ -95,7 +121,6 @@ def to_dict(isbn, EL_DICCIONARIO, fichero):
                 "imagen": "",
                 "descripcion": ""
             }
-            logging.warning(f"No hay registros en IT Bookstore API para el ISBN: {isbn} del fichero {fichero}")
         
 
 
